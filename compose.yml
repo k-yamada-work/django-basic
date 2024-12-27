@@ -1,0 +1,55 @@
+services:
+  db:
+    image: postgres:16
+    volumes:
+      - postgres_data:/var/lib/postgresql/data/
+    environment:
+      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+    ports:
+      - "5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  app:
+    build:
+      context: ./
+      dockerfile: Dockerfile.dev
+    env_file:
+      - .env
+    environment:
+      - MANAGE_PY_PATH=./manage.py
+    volumes:
+      - .:/workspace:cached
+      - venv:/workspace/.venv
+    command: uv run python ./manage.py runserver 0.0.0.0:8000
+    depends_on:
+      - db
+    links:
+      - mailpit
+    ports:
+      - "8000:8000"
+
+  mailpit:
+    image: axllent/mailpit
+    ports:
+      - "1025"
+      - 8025:8025
+
+  adminer:
+    image: ghcr.io/shyim/adminerevo:latest
+    links:
+      - db
+    ports:
+      - 8080:8080
+
+volumes:
+  postgres_data:
+  node_modules:
+  pnpm_store:
+  venv:
